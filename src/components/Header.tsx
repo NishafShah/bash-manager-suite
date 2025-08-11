@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { 
   PartyPopper, 
@@ -25,33 +26,52 @@ interface HeaderProps {
 
 export const Header = ({ isAuthenticated = false, isAdmin = false, onLogin, onLogout }: HeaderProps) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  const isActive = (path: string) => {
+    if (path === '/' && location.pathname === '/') return true;
+    if (path !== '/' && location.pathname.startsWith(path)) return true;
+    return false;
+  };
 
   return (
     <header className="bg-white/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center space-x-2">
+          <Link to="/" className="flex items-center space-x-2">
             <PartyPopper className="h-8 w-8 text-primary" />
             <span className="text-2xl font-bold bg-gradient-to-r from-party-pink to-party-blue bg-clip-text text-transparent">
               PartyPlan
             </span>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#home" className="text-foreground hover:text-primary transition-colors">
+            <Link 
+              to="/" 
+              className={`transition-colors ${isActive('/') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
+            >
               Home
-            </a>
-            <a href="#packages" className="text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link 
+              to="/#packages" 
+              className="text-foreground hover:text-primary transition-colors"
+            >
               Packages
-            </a>
-            <a href="#services" className="text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link 
+              to="/services" 
+              className={`transition-colors ${isActive('/services') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
+            >
               Services
-            </a>
-            <a href="#contact" className="text-foreground hover:text-primary transition-colors">
+            </Link>
+            <Link 
+              to="/contact" 
+              className={`transition-colors ${isActive('/contact') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
+            >
               Contact
-            </a>
+            </Link>
           </nav>
 
           {/* Desktop Auth */}
@@ -112,18 +132,34 @@ export const Header = ({ isAuthenticated = false, isAdmin = false, onLogin, onLo
         {mobileMenuOpen && (
           <div className="md:hidden mt-4 pb-4">
             <div className="flex flex-col space-y-4">
-              <a href="#home" className="text-foreground hover:text-primary transition-colors">
+              <Link 
+                to="/" 
+                className={`transition-colors ${isActive('/') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Home
-              </a>
-              <a href="#packages" className="text-foreground hover:text-primary transition-colors">
+              </Link>
+              <Link 
+                to="/#packages" 
+                className="text-foreground hover:text-primary transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Packages
-              </a>
-              <a href="#services" className="text-foreground hover:text-primary transition-colors">
+              </Link>
+              <Link 
+                to="/services" 
+                className={`transition-colors ${isActive('/services') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Services
-              </a>
-              <a href="#contact" className="text-foreground hover:text-primary transition-colors">
+              </Link>
+              <Link 
+                to="/contact" 
+                className={`transition-colors ${isActive('/contact') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Contact
-              </a>
+              </Link>
               {!isAuthenticated ? (
                 <div className="flex flex-col space-y-2">
                   <Button variant="ghost" onClick={onLogin}>
