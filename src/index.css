@@ -17,24 +17,42 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 350 85% 58%;
+    --primary-foreground: 0 0% 98%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 220 100% 70%;
+    --secondary-foreground: 0 0% 98%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 280 60% 65%;
+    --accent-foreground: 0 0% 98%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 350 85% 58%;
+
+    /* Custom design tokens */
+    --party-pink: 350 85% 58%;
+    --party-blue: 220 100% 70%;
+    --party-purple: 280 60% 65%;
+    --party-orange: 30 100% 65%;
+    
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(var(--party-pink)), hsl(var(--party-blue)));
+    --gradient-card: linear-gradient(145deg, hsl(var(--party-pink) / 0.1), hsl(var(--party-blue) / 0.1));
+    --gradient-button: linear-gradient(135deg, hsl(var(--party-pink)), hsl(var(--party-purple)));
+    
+    /* Shadows */
+    --shadow-party: 0 10px 30px -10px hsl(var(--party-pink) / 0.3);
+    --shadow-card: 0 8px 25px -8px hsl(var(--party-blue) / 0.2);
+    
+    /* Animations */
+    --transition-party: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --radius: 0.5rem;
 
