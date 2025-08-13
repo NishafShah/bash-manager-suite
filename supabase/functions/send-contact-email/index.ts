@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { Resend } from "npm:resend@2.0.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,24 +23,18 @@ const handler = async (req: Request): Promise<Response> => {
   try {
     const { name, email, phone, subject, message }: ContactEmailRequest = await req.json();
 
-    // Get SMTP configuration from environment
-    const smtpUser = Deno.env.get('SMTP_USER');
-    const smtpPass = Deno.env.get('SMTP_PASS');
-    const smtpHost = Deno.env.get('SMTP_HOST');
-    const smtpPort = Deno.env.get('SMTP_PORT');
+    // Get Resend API key from environment
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    const recipientEmail = Deno.env.get('SMTP_USER') || 'info@partyplan.pk';
 
-    if (!smtpUser || !smtpPass || !smtpHost || !smtpPort) {
-      throw new Error('SMTP configuration is missing');
+    if (!resendApiKey) {
+      throw new Error('RESEND_API_KEY is not configured');
     }
 
-    // Create email content
-    const emailContent = `
-Subject: New Contact Form Submission: ${subject}
-From: ${name} <${smtpUser}>
-To: ${smtpUser}
-MIME-Version: 1.0
-Content-Type: text/html; charset=utf-8
+    const resend = new Resend(resendApiKey);
 
+    // Create email content
+    const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -90,28 +85,26 @@ Content-Type: text/html; charset=utf-8
 </html>
 `;
 
-    // Send email using Gmail SMTP directly
-    const emailData = {
-      from: smtpUser,
-      to: smtpUser,
+    // Send email using Resend
+    const emailResponse = await resend.emails.send({
+      from: 'Party Planning <onboarding@resend.dev>',
+      to: [recipientEmail],
       subject: `New Contact: ${subject}`,
-      html: emailContent,
-    };
+      html: emailHtml,
+      text: `
+New Contact Form Submission
 
-    // Use Gmail SMTP directly with nodemailer-style approach
-    const response = await sendViaGmailSMTP({
-      smtpHost,
-      smtpPort: parseInt(smtpPort),
-      smtpUser,
-      smtpPass,
-      ...emailData,
+Name: ${name}
+Email: ${email}
+${phone ? `Phone: ${phone}` : ''}
+Subject: ${subject}
+
+Message:
+${message}
+      `,
     });
-    
-    if (!response.success) {
-      throw new Error('Failed to send email via Gmail SMTP');
-    }
 
-    console.log('Contact email sent successfully');
+    console.log('Contact email sent successfully:', emailResponse);
 
     return new Response(
       JSON.stringify({ 
@@ -143,53 +136,5 @@ Content-Type: text/html; charset=utf-8
     );
   }
 };
-
-// Gmail SMTP sender function
-async function sendViaGmailSMTP(config: {
-  smtpHost: string;
-  smtpPort: number;
-  smtpUser: string;
-  smtpPass: string;
-  to: string;
-  from: string;
-  subject: string;
-  html: string;
-}) {
-  try {
-    // Use Gmail SMTP API directly
-    const auth = btoa(`${config.smtpUser}:${config.smtpPass}`);
-    
-    const emailContent = [
-      `To: ${config.to}`,
-      `From: ${config.from}`,
-      `Subject: ${config.subject}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=utf-8',
-      '',
-      config.html
-    ].join('\r\n');
-
-    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Basic ${auth}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        raw: btoa(emailContent).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-      })
-    });
-
-    if (!response.ok) {
-      console.error('Gmail API Error:', await response.text());
-      return { success: false, error: 'Gmail API failed' };
-    }
-
-    return { success: true };
-  } catch (error) {
-    console.error('SMTP Error:', error);
-    return { success: false, error };
-  }
-}
 
 serve(handler);
