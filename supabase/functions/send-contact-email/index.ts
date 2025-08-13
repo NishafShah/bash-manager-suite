@@ -21,13 +21,21 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { name, email, phone, subject, message }: ContactEmailRequest = await req.json();
+    console.log('Received request:', req.method);
+    const requestBody = await req.json();
+    console.log('Request body:', requestBody);
+    
+    const { name, email, phone, subject, message }: ContactEmailRequest = requestBody;
 
     // Get Resend API key from environment
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const recipientEmail = Deno.env.get('SMTP_USER') || 'info@partyplan.pk';
 
+    console.log('Resend API key exists:', !!resendApiKey);
+    console.log('Recipient email:', recipientEmail);
+
     if (!resendApiKey) {
+      console.error('RESEND_API_KEY is missing');
       throw new Error('RESEND_API_KEY is not configured');
     }
 
