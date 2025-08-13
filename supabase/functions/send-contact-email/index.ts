@@ -90,48 +90,25 @@ Content-Type: text/html; charset=utf-8
 </html>
 `;
 
-    // Send email using Gmail SMTP
-    const response = await fetch(`https://api.smtp2go.com/v3/email/send`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Smtp2go-Api-Key': smtpPass, // Using the app password as API key alternative
-      },
-      body: JSON.stringify({
-        api_key: smtpPass,
-        to: [smtpUser],
-        sender: smtpUser,
-        subject: `New Contact: ${subject}`,
-        html_body: emailContent,
-        text_body: `
-New Contact Form Submission
+    // Send email using Gmail SMTP directly
+    const emailData = {
+      from: smtpUser,
+      to: smtpUser,
+      subject: `New Contact: ${subject}`,
+      html: emailContent,
+    };
 
-Name: ${name}
-Email: ${email}
-${phone ? `Phone: ${phone}` : ''}
-Subject: ${subject}
-
-Message:
-${message}
-        `,
-      }),
+    // Use Gmail SMTP directly with nodemailer-style approach
+    const response = await sendViaGmailSMTP({
+      smtpHost,
+      smtpPort: parseInt(smtpPort),
+      smtpUser,
+      smtpPass,
+      ...emailData,
     });
-
-    if (!response.ok) {
-      // Fallback: Use nodemailer-style SMTP
-      const nodemailerResponse = await sendViaNodemailer({
-        smtpHost,
-        smtpPort: parseInt(smtpPort),
-        smtpUser,
-        smtpPass,
-        to: smtpUser,
-        subject: `New Contact: ${subject}`,
-        html: emailContent,
-      });
-      
-      if (!nodemailerResponse.success) {
-        throw new Error('Failed to send email via SMTP');
-      }
+    
+    if (!response.success) {
+      throw new Error('Failed to send email via Gmail SMTP');
     }
 
     console.log('Contact email sent successfully');
@@ -167,21 +144,50 @@ ${message}
   }
 };
 
-// Fallback SMTP sender function
-async function sendViaNodemailer(config: {
+// Gmail SMTP sender function
+async function sendViaGmailSMTP(config: {
   smtpHost: string;
   smtpPort: number;
   smtpUser: string;
   smtpPass: string;
   to: string;
+  from: string;
   subject: string;
   html: string;
 }) {
   try {
-    // This is a simplified SMTP implementation
-    // For production, you might want to use a proper SMTP library
+    // Use Gmail SMTP API directly
+    const auth = btoa(`${config.smtpUser}:${config.smtpPass}`);
+    
+    const emailContent = [
+      `To: ${config.to}`,
+      `From: ${config.from}`,
+      `Subject: ${config.subject}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/html; charset=utf-8',
+      '',
+      config.html
+    ].join('\r\n');
+
+    const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${auth}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        raw: btoa(emailContent).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+      })
+    });
+
+    if (!response.ok) {
+      console.error('Gmail API Error:', await response.text());
+      return { success: false, error: 'Gmail API failed' };
+    }
+
     return { success: true };
   } catch (error) {
+    console.error('SMTP Error:', error);
     return { success: false, error };
   }
 }
