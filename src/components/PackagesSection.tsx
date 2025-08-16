@@ -1,4 +1,6 @@
 import { PackageCard } from "@/components/PackageCard";
+import BookingSystem from "@/components/BookingSystem";
+import { useState } from "react";
 
 // Mock data for packages
 const packages = [
@@ -68,9 +70,29 @@ const packages = [
 ];
 
 export const PackagesSection = () => {
+  const [selectedPackage, setSelectedPackage] = useState<any>(null);
+
   const handleBookPackage = (packageId: number) => {
-    console.log(`Booking package ${packageId}`);
-    // TODO: Implement booking logic
+    const pkg = packages.find(p => p.id === packageId);
+    if (pkg) {
+      // Convert to BookingSystem expected format
+      const bookingPackage = {
+        id: pkg.id.toString(),
+        title: pkg.title,
+        description: `${pkg.duration} celebration package for up to ${pkg.capacity.split(' ')[2]} guests`,
+        price: pkg.price,
+        duration: pkg.duration,
+        capacity: parseInt(pkg.capacity.split(' ')[2]) || 15,
+        rating: pkg.rating,
+        review_count: pkg.reviews,
+        image_url: pkg.image
+      };
+      setSelectedPackage(bookingPackage);
+    }
+  };
+
+  const handleCloseBooking = () => {
+    setSelectedPackage(null);
   };
 
   return (
@@ -123,6 +145,13 @@ export const PackagesSection = () => {
           </div>
         </div>
       </div>
+      
+      {selectedPackage && (
+        <BookingSystem 
+          selectedPackage={selectedPackage} 
+          onClose={handleCloseBooking} 
+        />
+      )}
     </section>
   );
 };
