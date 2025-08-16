@@ -1,88 +1,97 @@
 import { PackageCard } from "@/components/PackageCard";
 import BookingSystem from "@/components/BookingSystem";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock data for packages
-const packages = [
-  {
-    id: 1,
-    title: "Essential Birthday Package",
-    price: 299,
-    originalPrice: 399,
-    duration: "4 hours",
-    capacity: "Up to 15 guests",
-    rating: 4.8,
-    reviews: 124,
-    features: [
-      "Professional decoration setup",
-      "Birthday cake (vanilla/chocolate)",
-      "Party supplies & balloons",
-      "Music system with playlist",
-      "Photography session (1 hour)",
-      "Cleanup service"
-    ],
-    image: "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80"
-  },
-  {
-    id: 2,
-    title: "Premium Celebration",
-    price: 599,
-    originalPrice: 799,
-    duration: "6 hours",
-    capacity: "Up to 30 guests",
-    rating: 4.9,
-    reviews: 89,
-    features: [
-      "Luxury themed decorations",
-      "Custom birthday cake design",
-      "Professional photographer",
-      "DJ & sound system",
-      "Catering service included",
-      "Party games & entertainment",
-      "Personalized party favors",
-      "Dedicated event coordinator"
-    ],
-    image: "https://images.unsplash.com/photo-1464207687429-7505649dae38?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    popular: true
-  },
-  {
-    id: 3,
-    title: "Ultimate Party Experience",
-    price: 999,
-    duration: "8 hours",
-    capacity: "Up to 50 guests",
-    rating: 5.0,
-    reviews: 67,
-    features: [
-      "Premium venue decoration",
-      "Multi-tier custom cake",
-      "Professional photo & video",
-      "Live entertainment/magician",
-      "Full catering menu",
-      "Party coordinator team",
-      "Custom party themes",
-      "Post-event video highlights",
-      "Gift wrapping service",
-      "Transport arrangements"
-    ],
-    image: "https://images.unsplash.com/photo-1576919228236-a097c32a5cd4?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80"
-  }
-];
+interface Package {
+  id: string;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  duration: string;
+  capacity: number;
+  rating: number;
+  reviews: number;
+  features: string[];
+  image: string;
+  popular?: boolean;
+  description: string;
+}
 
 export const PackagesSection = () => {
   const [selectedPackage, setSelectedPackage] = useState<any>(null);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const handleBookPackage = (packageId: number) => {
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('service_packages')
+          .select(`
+            id,
+            title,
+            description,
+            price,
+            duration,
+            capacity,
+            rating,
+            review_count,
+            image_url,
+            is_popular,
+            package_features (
+              feature_text,
+              is_included
+            )
+          `)
+          .eq('is_active', true);
+
+        if (error) throw error;
+
+        const formattedPackages = data?.map(pkg => ({
+          id: pkg.id,
+          title: pkg.title,
+          price: Number(pkg.price),
+          duration: pkg.duration || "6 hours",
+          capacity: pkg.capacity || 50,
+          rating: Number(pkg.rating) || 4.8,
+          reviews: pkg.review_count || 0,
+          features: pkg.package_features?.filter(f => f.is_included).map(f => f.feature_text) || [
+            "Professional decoration setup",
+            "Event coordination",
+            "Music system",
+            "Photography session",
+            "Cleanup service"
+          ],
+          image: pkg.image_url === "/placeholder.svg" ? 
+            "https://images.unsplash.com/photo-1530103862676-de8c9debad1d?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80" : 
+            pkg.image_url,
+          popular: pkg.is_popular,
+          description: pkg.description
+        })) || [];
+
+        setPackages(formattedPackages);
+      } catch (error) {
+        console.error('Error fetching packages:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPackages();
+  }, []);
+
+  const handleBookPackage = (packageId: string) => {
     const pkg = packages.find(p => p.id === packageId);
     if (pkg) {
       // Convert to BookingSystem expected format
       const bookingPackage = {
-        id: pkg.id.toString(),
+        id: pkg.id,
         title: pkg.title,
-        description: `${pkg.duration} celebration package for up to ${pkg.capacity.split(' ')[2]} guests`,
+        description: pkg.description,
         price: pkg.price,
         duration: pkg.duration,
-        capacity: parseInt(pkg.capacity.split(' ')[2]) || 15,
+        capacity: pkg.capacity,
         rating: pkg.rating,
         review_count: pkg.reviews,
         image_url: pkg.image
@@ -112,25 +121,34 @@ export const PackagesSection = () => {
           </p>
         </div>
 
-        {/* Packages Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {packages.map((pkg) => (
-            <PackageCard
-              key={pkg.id}
-              title={pkg.title}
-              price={pkg.price}
-              originalPrice={pkg.originalPrice}
-              duration={pkg.duration}
-              capacity={pkg.capacity}
-              rating={pkg.rating}
-              reviews={pkg.reviews}
-              features={pkg.features}
-              image={pkg.image}
-              popular={pkg.popular}
-              onBook={() => handleBookPackage(pkg.id)}
-            />
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-muted-foreground">Loading packages...</p>
+          </div>
+        ) : (
+          <>
+            {/* Packages Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {packages.map((pkg) => (
+                <PackageCard
+                  key={pkg.id}
+                  title={pkg.title}
+                  price={pkg.price}
+                  originalPrice={pkg.originalPrice}
+                  duration={pkg.duration}
+                  capacity={`Up to ${pkg.capacity} guests`}
+                  rating={pkg.rating}
+                  reviews={pkg.reviews}
+                  features={pkg.features}
+                  image={pkg.image}
+                  popular={pkg.popular}
+                  onBook={() => handleBookPackage(pkg.id)}
+                />
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Custom Package CTA */}
         <div className="mt-16 text-center">
