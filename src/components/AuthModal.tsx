@@ -11,15 +11,18 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PartyPopper, Mail, Lock, User, Phone } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAuthenticated: (user: { name: string; email: string; isAdmin: boolean }) => void;
+  onAuthenticated: () => void;
 }
 
 export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -29,17 +32,30 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     
-    // Mock authentication - replace with real auth logic
-    setTimeout(() => {
-      const isAdmin = email.includes('admin');
-      onAuthenticated({
-        name: isAdmin ? 'Admin User' : 'John Doe',
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        isAdmin
+        password
       });
-      setIsLoading(false);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: "You have been signed in successfully.",
+      });
+      
+      onAuthenticated();
       onClose();
-    }, 1000);
+    } catch (error: any) {
+      toast({
+        title: "Sign In Failed",
+        description: error.message || "Failed to sign in. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -47,19 +63,42 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
     setIsLoading(true);
     
     const formData = new FormData(e.currentTarget);
-    const name = formData.get('name') as string;
     const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const name = formData.get('name') as string;
+    const phone = formData.get('phone') as string;
     
-    // Mock registration - replace with real auth logic
-    setTimeout(() => {
-      onAuthenticated({
-        name,
+    try {
+      const { error } = await supabase.auth.signUp({
         email,
-        isAdmin: false
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: name,
+            phone: phone
+          }
+        }
       });
-      setIsLoading(false);
+
+      if (error) throw error;
+
+      toast({
+        title: "Account Created!",
+        description: "Please check your email to verify your account.",
+      });
+      
+      onAuthenticated();
       onClose();
-    }, 1000);
+    } catch (error: any) {
+      toast({
+        title: "Sign Up Failed", 
+        description: error.message || "Failed to create account. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -119,9 +158,7 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
             </form>
 
             <div className="text-center text-sm text-muted-foreground">
-              <p>Demo credentials:</p>
-              <p>User: user@demo.com / password</p>
-              <p>Admin: admin@demo.com / password</p>
+              <p>Create your account to start booking parties!</p>
             </div>
           </TabsContent>
 

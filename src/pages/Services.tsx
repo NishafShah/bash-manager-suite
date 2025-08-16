@@ -1,6 +1,7 @@
 import { Header } from "@/components/Header";
 import { useState } from "react";
 import { AuthModal } from "@/components/AuthModal";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Camera, 
   Utensils, 
@@ -16,14 +17,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-interface User {
-  name: string;
-  email: string;
-  isAdmin: boolean;
-}
-
 const Services = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, signOut } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleLogin = () => {
@@ -31,11 +26,11 @@ const Services = () => {
   };
 
   const handleLogout = () => {
-    setUser(null);
+    signOut();
   };
 
-  const handleAuthenticated = (authenticatedUser: User) => {
-    setUser(authenticatedUser);
+  const handleAuthenticated = () => {
+    setShowAuthModal(false);
   };
 
   const services = [
@@ -105,7 +100,7 @@ const Services = () => {
     <div className="min-h-screen bg-background">
       <Header 
         isAuthenticated={!!user}
-        isAdmin={user?.isAdmin || false}
+        isAdmin={user?.email?.includes('admin') || false}
         onLogin={handleLogin}
         onLogout={handleLogout}
       />

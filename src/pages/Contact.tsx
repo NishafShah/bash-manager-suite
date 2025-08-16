@@ -1,6 +1,7 @@
 import { Header } from "@/components/Header";
 import { useState } from "react";
 import { AuthModal } from "@/components/AuthModal";
+import { useAuth } from "@/contexts/AuthContext";
 import { 
   Phone, 
   Mail, 
@@ -21,14 +22,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
-interface User {
-  name: string;
-  email: string;
-  isAdmin: boolean;
-}
-
 const Contact = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, signOut } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -44,11 +39,11 @@ const Contact = () => {
   };
 
   const handleLogout = () => {
-    setUser(null);
+    signOut();
   };
 
-  const handleAuthenticated = (authenticatedUser: User) => {
-    setUser(authenticatedUser);
+  const handleAuthenticated = () => {
+    setShowAuthModal(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -124,7 +119,7 @@ const Contact = () => {
     <div className="min-h-screen bg-background">
       <Header 
         isAuthenticated={!!user}
-        isAdmin={user?.isAdmin || false}
+        isAdmin={user?.email?.includes('admin') || false}
         onLogin={handleLogin}
         onLogout={handleLogout}
       />

@@ -3,15 +3,10 @@ import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { PackagesSection } from "@/components/PackagesSection";
 import { AuthModal } from "@/components/AuthModal";
-
-interface User {
-  name: string;
-  email: string;
-  isAdmin: boolean;
-}
+import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, signOut } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handleLogin = () => {
@@ -19,18 +14,18 @@ const Index = () => {
   };
 
   const handleLogout = () => {
-    setUser(null);
+    signOut();
   };
 
-  const handleAuthenticated = (authenticatedUser: User) => {
-    setUser(authenticatedUser);
+  const handleAuthenticated = () => {
+    setShowAuthModal(false);
   };
 
   return (
     <div className="min-h-screen bg-background">
       <Header 
         isAuthenticated={!!user}
-        isAdmin={user?.isAdmin || false}
+        isAdmin={user?.email?.includes('admin') || false}
         onLogin={handleLogin}
         onLogout={handleLogout}
       />
