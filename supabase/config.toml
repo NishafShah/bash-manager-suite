@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.create-booking]
 verify_jwt = true
 
+[functions.create-booking-with-payment]
+verify_jwt = true
+
 [functions.create-checkout-session]
 verify_jwt = true
 

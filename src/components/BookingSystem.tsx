@@ -39,7 +39,7 @@ export default function BookingSystem({ selectedPackage, onClose }: BookingSyste
 
   const totalAmount = selectedPackage.price * guestCount;
 
-  const handleCreateBooking = async () => {
+  const handleBookAndPay = async () => {
     try {
       setIsCreatingBooking(true);
 
@@ -63,53 +63,15 @@ export default function BookingSystem({ selectedPackage, onClose }: BookingSyste
         return;
       }
 
-      // Create booking
-      const { data, error } = await supabase.functions.invoke('create-booking', {
+      // Create booking and payment session in one call
+      const { data, error } = await supabase.functions.invoke('create-booking-with-payment', {
         body: {
           package_id: selectedPackage.id,
           event_date: format(eventDate, 'yyyy-MM-dd'),
           guest_count: guestCount,
           special_requests: specialRequests || null,
-        },
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to create booking');
-      }
-
-      toast({
-        title: "Booking Created",
-        description: "Your booking has been created successfully. Proceeding to payment...",
-      });
-
-      // Proceed to payment
-      await handlePayment(data.booking.id);
-
-    } catch (error) {
-      console.error('Error creating booking:', error);
-      toast({
-        title: "Booking Failed",
-        description: error.message || "Failed to create booking. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsCreatingBooking(false);
-    }
-  };
-
-  const handlePayment = async (bookingId: string) => {
-    try {
-      setIsProcessingPayment(true);
-
-      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-        body: {
-          booking_id: bookingId,
-          success_url: `${window.location.origin}/booking-success?booking_id=${bookingId}`,
-          cancel_url: `${window.location.origin}/booking-canceled?booking_id=${bookingId}`,
+          success_url: `${window.location.origin}/booking-success`,
+          cancel_url: `${window.location.origin}/booking-canceled`,
         },
       });
 
@@ -121,18 +83,26 @@ export default function BookingSystem({ selectedPackage, onClose }: BookingSyste
         throw new Error('No checkout URL received');
       }
 
-      // Redirect to Stripe Checkout
-      window.location.href = data.url;
+      // Open Stripe checkout in new tab
+      window.open(data.url, '_blank');
+      
+      toast({
+        title: "Redirecting to Payment",
+        description: "Opening payment page in new tab...",
+      });
+      
+      // Close the booking modal
+      onClose();
 
     } catch (error) {
-      console.error('Error creating checkout session:', error);
+      console.error('Error creating booking and payment:', error);
       toast({
-        title: "Payment Failed",
-        description: error.message || "Failed to initialize payment. Please try again.",
+        title: "Booking Failed",
+        description: error.message || "Failed to create booking. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsProcessingPayment(false);
+      setIsCreatingBooking(false);
     }
   };
 
@@ -237,13 +207,11 @@ export default function BookingSystem({ selectedPackage, onClose }: BookingSyste
               Cancel
             </Button>
             <Button 
-              onClick={handleCreateBooking}
-              disabled={isCreatingBooking || isProcessingPayment || !eventDate}
+              onClick={handleBookAndPay}
+              disabled={isCreatingBooking || !eventDate}
               className="flex-1"
             >
-              {isCreatingBooking ? "Creating Booking..." : 
-               isProcessingPayment ? "Processing Payment..." :
-               "Book & Pay Now"}
+              {isCreatingBooking ? "Processing..." : "Pay & Book Now"}
             </Button>
           </div>
         </CardContent>
