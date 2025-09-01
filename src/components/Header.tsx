@@ -61,12 +61,6 @@ export const Header = ({ isAuthenticated = false, isAdmin = false, onLogin, onLo
               Packages
             </Link>
             <Link 
-              to="/services" 
-              className={`transition-colors ${isActive('/services') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
-            >
-              Services
-            </Link>
-            <Link 
               to="/contact" 
               className={`transition-colors ${isActive('/contact') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
             >
@@ -151,13 +145,6 @@ export const Header = ({ isAuthenticated = false, isAdmin = false, onLogin, onLo
                 onClick={() => setMobileMenuOpen(false)}
               >
                 Packages
-              </Link>
-              <Link 
-                to="/services" 
-                className={`transition-colors ${isActive('/services') ? 'text-primary font-medium' : 'text-foreground hover:text-primary'}`}
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Services
               </Link>
               <Link 
                 to="/contact" 

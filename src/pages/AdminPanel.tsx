@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
-import { AuthModal } from "@/components/AuthModal";
-import { useAuth } from "@/contexts/AuthContext";
+import { AdminLogin } from "@/components/AdminLogin";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Users, 
   Calendar, 
@@ -15,7 +15,8 @@ import {
   Clock,
   Star,
   MapPin,
-  CreditCard
+  CreditCard,
+  LogOut
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,164 +24,101 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const AdminPanel = () => {
-  const { user, signOut } = useAuth();
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [recentBookings, setRecentBookings] = useState<any[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
+  const [contactSubmissions, setContactSubmissions] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    totalBookings: 0,
+    activeUsers: 0,
+    avgRating: 0
+  });
 
-  const handleLogin = () => {
-    setShowAuthModal(true);
+  const handleAdminLogin = () => {
+    setIsLoggedIn(true);
   };
 
   const handleLogout = () => {
-    signOut();
+    setIsLoggedIn(false);
   };
 
-  const handleAuthenticated = () => {
-    setShowAuthModal(false);
+  // Fetch real data from Supabase
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchAdminData();
+    }
+  }, [isLoggedIn]);
+
+  const fetchAdminData = async () => {
+    try {
+      // Fetch bookings
+      const { data: bookingsData } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          service_packages(title),
+          profiles(first_name, last_name)
+        `)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Fetch packages
+      const { data: packagesData } = await supabase
+        .from('service_packages')
+        .select('*')
+        .eq('is_active', true);
+
+      // Fetch contact submissions
+      const { data: contactsData } = await supabase
+        .from('contact_submissions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      // Calculate stats
+      const { data: allBookings } = await supabase
+        .from('bookings')
+        .select('total_amount');
+
+      const totalRevenue = allBookings?.reduce((sum, booking) => sum + Number(booking.total_amount || 0), 0) || 0;
+      const totalBookings = allBookings?.length || 0;
+
+      setRecentBookings(bookingsData || []);
+      setPackages(packagesData || []);
+      setContactSubmissions(contactsData || []);
+      setStats({
+        totalRevenue,
+        totalBookings,
+        activeUsers: 0, // Would need to implement user tracking
+        avgRating: 4.6 // Would calculate from actual reviews
+      });
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    }
   };
 
-  // Check if user is admin
-  const isAdmin = user?.email?.includes('admin') || false;
-
-  // Redirect if not authenticated or not admin
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header 
-          isAuthenticated={false}
-          onLogin={handleLogin}
-          onLogout={handleLogout}
-        />
-        <div className="container mx-auto px-4 py-16 text-center">
-          <Settings className="h-16 w-16 text-primary mx-auto mb-6" />
-          <h1 className="text-4xl font-bold mb-4">Admin Panel</h1>
-          <p className="text-muted-foreground mb-8">Please sign in to access the admin panel</p>
-          <Button onClick={handleLogin} variant="hero" size="lg">
-            Sign In
-          </Button>
-        </div>
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onAuthenticated={handleAuthenticated}
-        />
-      </div>
-    );
+  // Show login form if not authenticated
+  if (!isLoggedIn) {
+    return <AdminLogin onAdminLogin={handleAdminLogin} />;
   }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header 
-          isAuthenticated={!!user}
-          isAdmin={isAdmin}
-          onLogin={handleLogin}
-          onLogout={handleLogout}
-        />
-        <div className="container mx-auto px-4 py-16 text-center">
-          <Settings className="h-16 w-16 text-muted-foreground mx-auto mb-6" />
-          <h1 className="text-4xl font-bold mb-4">Access Denied</h1>
-          <p className="text-muted-foreground mb-8">You don't have permission to access this area</p>
-          <Button variant="outline" onClick={() => window.history.back()}>
-            Go Back
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Mock data for demonstration
-  const recentBookings = [
-    {
-      id: 1,
-      customer: "John Doe",
-      email: "john@example.com",
-      package: "Premium Birthday Package",
-      date: "2024-02-15",
-      amount: "PKR 45,000",
-      status: "confirmed"
-    },
-    {
-      id: 2,
-      customer: "Jane Smith",
-      email: "jane@example.com",
-      package: "Kids Party Special",
-      date: "2024-02-28",
-      amount: "PKR 25,000",
-      status: "pending"
-    },
-    {
-      id: 3,
-      customer: "Bob Johnson",
-      email: "bob@example.com",
-      package: "Deluxe Birthday Experience",
-      date: "2024-03-05",
-      amount: "PKR 35,000",
-      status: "confirmed"
-    }
-  ];
-
-  const packages = [
-    {
-      id: 1,
-      name: "Basic Party Package",
-      price: "PKR 18,000",
-      bookings: 45,
-      rating: 4.2,
-      status: "active"
-    },
-    {
-      id: 2,
-      name: "Premium Birthday Package",
-      price: "PKR 45,000",
-      bookings: 32,
-      rating: 4.8,
-      status: "active"
-    },
-    {
-      id: 3,
-      name: "Kids Party Special",
-      price: "PKR 25,000",
-      bookings: 28,
-      rating: 4.5,
-      status: "active"
-    }
-  ];
-
-  const contactSubmissions = [
-    {
-      id: 1,
-      name: "Alice Brown",
-      email: "alice@example.com",
-      subject: "Wedding Planning Inquiry",
-      message: "Looking for wedding planning services...",
-      date: "2024-01-20",
-      status: "new"
-    },
-    {
-      id: 2,
-      name: "Mike Wilson",
-      email: "mike@example.com",
-      subject: "Corporate Event",
-      message: "Need help planning a corporate event...",
-      date: "2024-01-19",
-      status: "responded"
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-background">
-      <Header 
-        isAuthenticated={!!user}
-        isAdmin={isAdmin}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
-      />
+      <div className="bg-white/95 backdrop-blur-sm border-b border-border sticky top-0 z-50 px-4 py-4">
+        <div className="container mx-auto flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Settings className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold">Admin Panel</h1>
+          </div>
+          <Button variant="outline" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+      </div>
       
       <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center mb-8">
-          <Settings className="h-8 w-8 text-primary mr-3" />
-          <h1 className="text-3xl font-bold">Admin Panel</h1>
-        </div>
 
         <Tabs defaultValue="dashboard" className="space-y-6">
           <TabsList className="grid w-full grid-cols-5">
@@ -199,8 +137,8 @@ const AdminPanel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-2xl font-bold">₹5,67,000</p>
-                      <p className="text-xs text-green-600">+12% from last month</p>
+                      <p className="text-2xl font-bold">PKR {stats.totalRevenue.toLocaleString()}</p>
+                      <p className="text-xs text-green-600">Real-time data</p>
                     </div>
                     <DollarSign className="h-8 w-8 text-primary" />
                   </div>
@@ -212,8 +150,8 @@ const AdminPanel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Total Bookings</p>
-                      <p className="text-2xl font-bold">127</p>
-                      <p className="text-xs text-green-600">+8% from last month</p>
+                      <p className="text-2xl font-bold">{stats.totalBookings}</p>
+                      <p className="text-xs text-green-600">Real-time data</p>
                     </div>
                     <Calendar className="h-8 w-8 text-primary" />
                   </div>
@@ -224,9 +162,9 @@ const AdminPanel = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Active Users</p>
-                      <p className="text-2xl font-bold">89</p>
-                      <p className="text-xs text-green-600">+15% from last month</p>
+                      <p className="text-sm text-muted-foreground">Active Packages</p>
+                      <p className="text-2xl font-bold">{packages.length}</p>
+                      <p className="text-xs text-green-600">Available services</p>
                     </div>
                     <Users className="h-8 w-8 text-primary" />
                   </div>
@@ -238,8 +176,8 @@ const AdminPanel = () => {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-muted-foreground">Avg Rating</p>
-                      <p className="text-2xl font-bold">4.6</p>
-                      <p className="text-xs text-green-600">+0.2 from last month</p>
+                      <p className="text-2xl font-bold">{stats.avgRating}</p>
+                      <p className="text-xs text-green-600">Customer satisfaction</p>
                     </div>
                     <Star className="h-8 w-8 text-primary" />
                   </div>
@@ -259,11 +197,15 @@ const AdminPanel = () => {
                     {recentBookings.slice(0, 3).map((booking) => (
                       <div key={booking.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
-                          <p className="font-semibold">{booking.customer}</p>
-                          <p className="text-sm text-muted-foreground">{booking.package}</p>
+                          <p className="font-semibold">
+                            {booking.profiles?.first_name} {booking.profiles?.last_name || 'Guest'}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {booking.service_packages?.title || 'Custom Package'}
+                          </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-primary">{booking.amount}</p>
+                          <p className="font-semibold text-primary">PKR {Number(booking.total_amount).toLocaleString()}</p>
                           <Badge variant={booking.status === 'confirmed' ? 'default' : 'secondary'}>
                             {booking.status}
                           </Badge>
@@ -284,14 +226,14 @@ const AdminPanel = () => {
                     {packages.slice(0, 3).map((pkg) => (
                       <div key={pkg.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
-                          <p className="font-semibold">{pkg.name}</p>
-                          <p className="text-sm text-muted-foreground">{pkg.bookings} bookings</p>
+                          <p className="font-semibold">{pkg.title}</p>
+                          <p className="text-sm text-muted-foreground">Capacity: {pkg.capacity || 'Flexible'}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-semibold text-primary">{pkg.price}</p>
+                          <p className="font-semibold text-primary">PKR {Number(pkg.price).toLocaleString()}</p>
                           <div className="flex items-center">
                             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 mr-1" />
-                            <span className="text-sm">{pkg.rating}</span>
+                            <span className="text-sm">{pkg.rating || 0}</span>
                           </div>
                         </div>
                       </div>
