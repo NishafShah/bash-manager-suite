@@ -94,18 +94,24 @@ export const Header = ({ isAuthenticated = false, isAdmin = false, onLogin, onLo
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem>
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="flex items-center w-full">
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Calendar className="h-4 w-4 mr-2" />
-                    My Bookings
+                  <DropdownMenuItem asChild>
+                    <Link to="/dashboard" className="flex items-center w-full">
+                      <Calendar className="h-4 w-4 mr-2" />
+                      My Bookings
+                    </Link>
                   </DropdownMenuItem>
                   {isAdmin && (
-                    <DropdownMenuItem>
-                      <Settings className="h-4 w-4 mr-2" />
-                      Admin Panel
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="flex items-center w-full">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Admin Panel
+                      </Link>
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={onLogout}>
@@ -171,18 +177,24 @@ export const Header = ({ isAuthenticated = false, isAdmin = false, onLogin, onLo
                 </div>
               ) : (
                 <div className="flex flex-col space-y-2">
-                  <Button variant="ghost" className="justify-start">
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
+                  <Button variant="ghost" className="justify-start" asChild>
+                    <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Link>
                   </Button>
-                  <Button variant="ghost" className="justify-start">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    My Bookings
+                  <Button variant="ghost" className="justify-start" asChild>
+                    <Link to="/dashboard" onClick={() => setMobileMenuOpen(false)}>
+                      <Calendar className="h-4 w-4 mr-2" />
+                      My Bookings
+                    </Link>
                   </Button>
                   {isAdmin && (
-                    <Button variant="ghost" className="justify-start">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Admin Panel
+                    <Button variant="ghost" className="justify-start" asChild>
+                      <Link to="/admin" onClick={() => setMobileMenuOpen(false)}>
+                        <Settings className="h-4 w-4 mr-2" />
+                        Admin Panel
+                      </Link>
                     </Button>
                   )}
                   <Button variant="ghost" className="justify-start" onClick={onLogout}>
