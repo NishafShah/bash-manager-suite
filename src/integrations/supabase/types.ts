@@ -22,6 +22,7 @@ export type Database = {
           guest_count: number | null
           id: string
           package_id: string | null
+          service_id: string | null
           special_requests: string | null
           status: Database["public"]["Enums"]["booking_status"] | null
           total_amount: number
@@ -35,6 +36,7 @@ export type Database = {
           guest_count?: number | null
           id?: string
           package_id?: string | null
+          service_id?: string | null
           special_requests?: string | null
           status?: Database["public"]["Enums"]["booking_status"] | null
           total_amount: number
@@ -48,6 +50,7 @@ export type Database = {
           guest_count?: number | null
           id?: string
           package_id?: string | null
+          service_id?: string | null
           special_requests?: string | null
           status?: Database["public"]["Enums"]["booking_status"] | null
           total_amount?: number
@@ -294,6 +297,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      services: {
+        Row: {
+          description: string | null
+          id: string
+          price: number | null
+          title: string
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          price?: number | null
+          title: string
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          price?: number | null
+          title?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
