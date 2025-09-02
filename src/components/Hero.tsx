@@ -1,8 +1,31 @@
 import { Button } from "@/components/ui/button";
 import { PartyPopper, Calendar, Star, Users } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useState } from "react";
+import { AuthModal } from "./AuthModal";
 import heroImage from "@/assets/party-hero.jpg";
 
 export const Hero = () => {
+  const { user } = useAuth();
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  const handleStartPlanning = () => {
+    if (user) {
+      // Redirect to dashboard if logged in
+      window.location.href = '/dashboard';
+    } else {
+      // Show auth modal if not logged in
+      setShowAuthModal(true);
+    }
+  };
+
+  const scrollToPackages = () => {
+    const packagesSection = document.getElementById('packages');
+    if (packagesSection) {
+      packagesSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -54,13 +77,19 @@ export const Hero = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button variant="hero" size="lg" className="text-lg px-8 py-4">
+            <Button 
+              variant="hero" 
+              size="lg" 
+              className="text-lg px-8 py-4"
+              onClick={handleStartPlanning}
+            >
               Start Planning Now
             </Button>
             <Button 
               variant="outline" 
               size="lg" 
               className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-primary"
+              onClick={scrollToPackages}
             >
               View Packages
             </Button>
@@ -78,6 +107,16 @@ export const Hero = () => {
       <div className="absolute bottom-40 left-20 animate-bounce">
         <div className="w-5 h-5 bg-party-orange rounded-full"></div>
       </div>
+      
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthenticated={() => {
+          setShowAuthModal(false);
+          window.location.href = '/dashboard';
+        }}
+      />
     </section>
   );
 };

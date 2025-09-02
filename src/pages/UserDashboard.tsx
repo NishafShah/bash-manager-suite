@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import BookingSystem from "@/components/BookingSystem";
+import NewBookingForm from "@/components/NewBookingForm";
 
 const UserDashboard = () => {
   const { user, signOut } = useAuth();
@@ -72,7 +72,7 @@ const UserDashboard = () => {
         .from('profiles')
         .select('*')
         .eq('id', user?.id)
-        .single();
+        .maybeSingle();
 
       setBookings(bookingsData || []);
       setProfile(profileData);
@@ -253,52 +253,6 @@ const UserDashboard = () => {
               </div>
             )}
 
-            {/* Charts */}
-            {chartData.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <TrendingUp className="h-5 w-5 mr-2" />
-                      Spending Trends
-                    </CardTitle>
-                    <CardDescription>Your monthly party expenses</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <LineChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`PKR ${Number(value).toLocaleString()}`, 'Amount']} />
-                        <Line type="monotone" dataKey="amount" stroke="hsl(var(--primary))" strokeWidth={2} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center">
-                      <BarChart3 className="h-5 w-5 mr-2" />
-                      Booking Activity
-                    </CardTitle>
-                    <CardDescription>Your booking frequency</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <YAxis />
-                        <Tooltip formatter={(value) => [`PKR ${Number(value).toLocaleString()}`, 'Amount']} />
-                        <Bar dataKey="amount" fill="hsl(var(--primary))" />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
 
             {/* Upcoming Bookings */}
             <Card>
@@ -515,8 +469,7 @@ const UserDashboard = () => {
                   ✕
                 </Button>
               </div>
-              <BookingSystem 
-                selectedPackage={null}
+              <NewBookingForm 
                 onClose={() => {
                   setShowBookingForm(false);
                   fetchUserData(); // Refresh data after booking
