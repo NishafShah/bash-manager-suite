@@ -13,8 +13,11 @@ import {
   Star,
   Phone,
   Mail,
-  Plus
+  Plus,
+  TrendingUp,
+  BarChart3
 } from "lucide-react";
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +31,7 @@ const UserDashboard = () => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [chartData, setChartData] = useState<any[]>([]);
 
   const handleLogin = () => {
     setShowAuthModal(true);
@@ -72,6 +76,18 @@ const UserDashboard = () => {
 
       setBookings(bookingsData || []);
       setProfile(profileData);
+      
+      // Generate chart data for spending over time
+      const monthlySpending = bookingsData?.reduce((acc: any, booking: any) => {
+        const month = new Date(booking.created_at).toLocaleDateString('en-US', { month: 'short' });
+        acc[month] = (acc[month] || 0) + Number(booking.total_amount || 0);
+        return acc;
+      }, {}) || {};
+      
+      setChartData(Object.entries(monthlySpending).map(([month, amount]) => ({
+        month,
+        amount: Number(amount)
+      })));
     } catch (error) {
       console.error('Error fetching user data:', error);
     } finally {
@@ -189,6 +205,53 @@ const UserDashboard = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Charts */}
+            {chartData.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <TrendingUp className="h-5 w-5 mr-2" />
+                      Spending Trends
+                    </CardTitle>
+                    <CardDescription>Your monthly party expenses</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [`PKR ${Number(value).toLocaleString()}`, 'Amount']} />
+                        <Line type="monotone" dataKey="amount" stroke="hsl(var(--primary))" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <BarChart3 className="h-5 w-5 mr-2" />
+                      Booking Activity
+                    </CardTitle>
+                    <CardDescription>Your booking frequency</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip formatter={(value) => [`PKR ${Number(value).toLocaleString()}`, 'Amount']} />
+                        <Bar dataKey="amount" fill="hsl(var(--primary))" />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Upcoming Bookings */}
             <Card>
