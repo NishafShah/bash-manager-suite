@@ -129,6 +129,48 @@ const AdminPanel = () => {
     }
   };
 
+  const handlePackageToggle = async (id: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('service_packages')
+        .update({ is_active: !isActive })
+        .eq('id', id);
+      
+      if (error) throw error;
+      fetchAdminData(); // Refresh data
+    } catch (error) {
+      console.error('Error toggling package:', error);
+    }
+  };
+
+  const handleBookingStatusUpdate = async (id: string, status: 'pending' | 'confirmed' | 'cancelled' | 'completed') => {
+    try {
+      const { error } = await supabase
+        .from('bookings')
+        .update({ status })
+        .eq('id', id);
+      
+      if (error) throw error;
+      fetchAdminData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating booking:', error);
+    }
+  };
+
+  const handleContactStatusUpdate = async (id: string, status: 'new' | 'in_progress' | 'resolved' | 'closed') => {
+    try {
+      const { error } = await supabase
+        .from('contact_submissions')
+        .update({ status })
+        .eq('id', id);
+      
+      if (error) throw error;
+      fetchAdminData(); // Refresh data
+    } catch (error) {
+      console.error('Error updating contact:', error);
+    }
+  };
+
   // Show login form if not authenticated
   if (!isLoggedIn) {
     return <AdminLogin onAdminLogin={handleAdminLogin} />;
