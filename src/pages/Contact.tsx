@@ -255,6 +255,49 @@ const Contact = () => {
               );
             })}
 
+            {/* Student Team Section */}
+            <Card className="p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-12 h-12 rounded-full bg-gradient-primary flex items-center justify-center flex-shrink-0">
+                  <PartyPopper className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold ml-4">Our Student Team</h3>
+              </div>
+              <p className="text-muted-foreground mb-6">Meet our dedicated student team members who are here to help with your party planning needs.</p>
+              
+              <div className="space-y-4">
+                {/* Student 1 */}
+                <div className="border rounded-lg p-4 bg-muted/30">
+                  <h4 className="font-semibold text-lg mb-2">Hira Abdul Raheem</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">0331-7027004</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">muhammadhuzaifa657920@gmail.com</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Student 2 */}
+                <div className="border rounded-lg p-4 bg-muted/30">
+                  <h4 className="font-semibold text-lg mb-2">Uzma Ijaz</h4>
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">0309-5821042</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm">uzmajaffri13@gmail.com</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
             {/* Social Media */}
             <Card className="p-6 text-center">
               <h3 className="text-lg font-semibold mb-4">Follow Us</h3>
