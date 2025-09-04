@@ -22,6 +22,8 @@ interface AuthModalProps {
 
 export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [lastSignupEmail, setLastSignupEmail] = useState<string>('');
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -58,6 +60,74 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
     }
   };
 
+  const handleResendConfirmation = async (email?: string) => {
+    const emailToResend = email || lastSignupEmail;
+    if (!emailToResend) {
+      toast({
+        title: "Email Required",
+        description: "Please provide an email address to resend confirmation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsResending(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('resend-confirmation', {
+        body: { email: emailToResend }
+      });
+
+      if (error) {
+        throw new Error(error.message || "Failed to resend confirmation");
+      }
+
+      if (data.error) {
+        if (data.code === 'EMAIL_ALREADY_CONFIRMED') {
+          toast({
+            title: "Email Already Verified",
+            description: "This email is already verified. Please login.",
+            variant: "destructive",
+          });
+        } else if (data.code === 'USER_NOT_FOUND') {
+          toast({
+            title: "Account Not Found",
+            description: "No account found with this email address. Please sign up first.",
+            variant: "destructive",
+          });
+        } else if (data.code === 'RATE_LIMITED') {
+          toast({
+            title: "Too Many Requests",
+            description: "Please wait a few minutes before trying again.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Send Failed",
+            description: "Unable to send verification email. Please try again later.",
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
+      toast({
+        title: "Email Sent!",
+        description: "Verification email sent! Please check your inbox and spam folder.",
+      });
+
+    } catch (error: any) {
+      console.error('Resend confirmation error:', error);
+      toast({
+        title: "Failed to Resend",
+        description: "Unable to send verification email. Please try again later.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
+
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -67,6 +137,9 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
     const password = formData.get('password') as string;
     const name = formData.get('name') as string;
     const phone = formData.get('phone') as string;
+    
+    // Store email for potential resend confirmation
+    setLastSignupEmail(email);
     
     try {
       // Split fullname into first_name and last_name
@@ -98,6 +171,7 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
             description: data.error,
             variant: "destructive",
           });
+          // Show resend button in the UI
           return;
         }
         throw new Error(data.error);
@@ -269,6 +343,25 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
                 {isLoading ? "Creating Account..." : "Create Account"}
               </Button>
             </form>
+
+            {/* Resend Confirmation Button */}
+            {lastSignupEmail && (
+              <div className="text-center">
+                <p className="text-sm text-muted-foreground mb-2">
+                  Didn't receive the confirmation email?
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleResendConfirmation()}
+                  disabled={isResending}
+                  className="w-full"
+                >
+                  {isResending ? "Sending..." : "Resend Confirmation Email"}
+                </Button>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </DialogContent>
