@@ -73,12 +73,12 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
       const [firstName, ...rest] = name.trim().split(' ');
       const lastName = rest.join(' ') || null;
       
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
+      // Use the validation edge function
+      const { data, error } = await supabase.functions.invoke('validate-signup', {
+        body: {
+          email,
+          password,
+          userData: {
             first_name: firstName,
             last_name: lastName,
             phone: phone || null
@@ -86,21 +86,61 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Validation function error:', error);
+        throw new Error(error.message || "Failed to create account");
+      }
 
+      if (data.error) {
+        if (data.code === 'EMAIL_EXISTS') {
+          toast({
+            title: "Email Already Registered",
+            description: data.error,
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error(data.error);
+      }
+
+      // Success case
       toast({
         title: "Account Created!",
-        description: "Please check your email to verify your account.",
+        description: data.message || "Please check your email to verify your account.",
       });
       
-      onAuthenticated();
+      // Only call onAuthenticated if the email is already confirmed
+      if (data.user?.email_confirmed_at) {
+        onAuthenticated();
+      }
+      
       onClose();
     } catch (error: any) {
-      toast({
-        title: "Sign Up Failed", 
-        description: error.message || "Failed to create account. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Signup error:', error);
+      
+      // Handle specific error cases
+      if (error.message?.includes('already') || 
+          error.message?.includes('exists') || 
+          error.message?.includes('registered') ||
+          error.status === 422) {
+        toast({
+          title: "Email Already Registered",
+          description: "This email is already registered. Please login or use another email.",
+          variant: "destructive",
+        });
+      } else if (error.message?.includes('email')) {
+        toast({
+          title: "Email Error",
+          description: "There was an issue with the email service. Please try again or contact support.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Sign Up Failed", 
+          description: error.message || "Failed to create account. Please try again.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setIsLoading(false);
     }
