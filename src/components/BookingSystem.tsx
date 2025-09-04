@@ -79,8 +79,8 @@ export default function BookingSystem({ selectedPackage, onClose }: BookingSyste
         throw error;
       }
 
-      if (!data.url) {
-        throw new Error('No checkout URL received');
+      if (!data?.url) {
+        throw new Error('No checkout URL received from payment service');
       }
 
       // Open Stripe checkout in new tab

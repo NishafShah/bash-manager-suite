@@ -69,8 +69,10 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
     const phone = formData.get('phone') as string;
     
     try {
+      // Split fullname into first_name and last_name
       const [firstName, ...rest] = name.trim().split(' ');
-      const lastName = rest.join(' ');
+      const lastName = rest.join(' ') || null;
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -78,8 +80,8 @@ export const AuthModal = ({ isOpen, onClose, onAuthenticated }: AuthModalProps) 
           emailRedirectTo: `${window.location.origin}/`,
           data: {
             first_name: firstName,
-            last_name: lastName || null,
-            phone: phone
+            last_name: lastName,
+            phone: phone || null
           }
         }
       });

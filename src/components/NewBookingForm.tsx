@@ -118,19 +118,19 @@ export default function NewBookingForm({ onClose }: NewBookingFormProps) {
         throw error;
       }
 
-      if (data.checkout_url) {
+      if (data?.url) {
         toast({
           title: "Redirecting to Payment",
           description: "Opening payment page in new tab...",
         });
         
         // Open payment in new tab
-        window.open(data.checkout_url, '_blank');
+        window.open(data.url, '_blank');
         
         // Close the booking form
         onClose();
       } else {
-        throw new Error('No checkout URL received');
+        throw new Error('No checkout URL received from payment service');
       }
 
     } catch (error) {
