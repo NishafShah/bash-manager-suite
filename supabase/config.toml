@@ -14,3 +14,12 @@ verify_jwt = true
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.export-bookings]
+verify_jwt = true
+
+[functions.validate-signup]
+verify_jwt = false
+
+[functions.resend-confirmation]
+verify_jwt = false

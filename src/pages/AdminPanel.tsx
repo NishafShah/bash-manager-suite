@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { AdminLogin } from "@/components/AdminLogin";
+import { PackageForm } from "@/components/admin/PackageForm";
+import { AnalyticsDashboard } from "@/components/admin/AnalyticsDashboard";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { 
   Users, 
   Calendar, 
@@ -21,13 +24,17 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  Phone
+  Phone,
+  Plus,
+  Download,
+  FileSpreadsheet
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const AdminPanel = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -42,6 +49,10 @@ const AdminPanel = () => {
   });
   const [chartData, setChartData] = useState<any[]>([]);
   const [statusCounts, setStatusCounts] = useState<any[]>([]);
+  const [showPackageForm, setShowPackageForm] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<any>(null);
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
   const handleAdminLogin = () => {
     setIsLoggedIn(true);
@@ -168,6 +179,81 @@ const AdminPanel = () => {
       fetchAdminData(); // Refresh data
     } catch (error) {
       console.error('Error updating contact:', error);
+    }
+  };
+
+  const handleExportBookings = async () => {
+    setIsExporting(true);
+    try {
+      const response = await supabase.functions.invoke('export-bookings');
+      
+      if (response.error) {
+        throw response.error;
+      }
+
+      // Convert the response to a blob and trigger download
+      const blob = new Blob([response.data], { 
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bookings-export-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Export Successful",
+        description: "Bookings exported to Excel file",
+      });
+    } catch (error: any) {
+      console.error('Export error:', error);
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export bookings",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeletePackage = async (id: string, isActive: boolean) => {
+    try {
+      if (isActive) {
+        // Soft delete - deactivate
+        const { error } = await supabase
+          .from('service_packages')
+          .update({ is_active: false })
+          .eq('id', id);
+        if (error) throw error;
+        toast({
+          title: "Package Deactivated",
+          description: "Package has been deactivated successfully",
+        });
+      } else {
+        // Hard delete
+        const { error } = await supabase
+          .from('service_packages')
+          .delete()
+          .eq('id', id);
+        if (error) throw error;
+        toast({
+          title: "Package Deleted",
+          description: "Package has been permanently deleted",
+        });
+      }
+      fetchAdminData();
+    } catch (error: any) {
+      console.error('Error deleting package:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete package",
+        variant: "destructive",
+      });
     }
   };
 
@@ -325,7 +411,19 @@ const AdminPanel = () => {
                     <CardTitle>All Bookings</CardTitle>
                     <CardDescription>Manage customer bookings</CardDescription>
                   </div>
-                  <Button>Export Data</Button>
+                  <Button onClick={handleExportBookings} disabled={isExporting}>
+                    {isExporting ? (
+                      <>
+                        <Download className="h-4 w-4 mr-2 animate-spin" />
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        Export to Excel
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -388,7 +486,10 @@ const AdminPanel = () => {
                     <CardTitle>Service Packages</CardTitle>
                     <CardDescription>Manage your service offerings</CardDescription>
                   </div>
-                  <Button variant="hero">Add New Package</Button>
+                  <Button onClick={() => setShowPackageForm(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add New Package
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
@@ -415,15 +516,22 @@ const AdminPanel = () => {
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => {
+                            setEditingPackage(pkg);
+                            setShowPackageForm(true);
+                          }}
+                        >
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
-                        <Button size="sm" variant="outline">
-                          <BarChart3 className="h-4 w-4 mr-1" />
-                          Analytics
-                        </Button>
-                        <Button size="sm" variant="destructive">
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => handleDeletePackage(pkg.id, pkg.is_active)}
+                        >
                           <Trash2 className="h-4 w-4 mr-1" />
                           {pkg.is_active ? 'Deactivate' : 'Delete'}
                         </Button>
@@ -487,102 +595,32 @@ const AdminPanel = () => {
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Revenue Trends</CardTitle>
-                  <CardDescription>Monthly revenue growth</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => [`PKR ${Number(value).toLocaleString()}`, 'Revenue']} />
-                      <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Booking Status Distribution</CardTitle>
-                  <CardDescription>Current booking status breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={statusCounts}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {statusCounts.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Monthly Bookings</CardTitle>
-                  <CardDescription>Booking volume trends</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip />
-                      <Bar dataKey="bookings" fill="hsl(var(--primary))" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Performance Metrics</CardTitle>
-                  <CardDescription>Key business indicators</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <span className="text-sm font-medium">Average Order Value</span>
-                    <span className="text-lg font-bold text-primary">
-                      PKR {stats.totalBookings > 0 ? Math.round(stats.totalRevenue / stats.totalBookings).toLocaleString() : 0}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <span className="text-sm font-medium">Conversion Rate</span>
-                    <span className="text-lg font-bold text-green-600">78%</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <span className="text-sm font-medium">Customer Satisfaction</span>
-                    <span className="text-lg font-bold text-yellow-600">{stats.avgRating}/5.0</span>
-                  </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
-                    <span className="text-sm font-medium">Repeat Customers</span>
-                    <span className="text-lg font-bold text-blue-600">45%</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <AnalyticsDashboard />
           </TabsContent>
         </Tabs>
+
+        {/* Package Form Dialog */}
+        <Dialog open={showPackageForm} onOpenChange={setShowPackageForm}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {editingPackage ? 'Edit Package' : 'Create New Package'}
+              </DialogTitle>
+            </DialogHeader>
+            <PackageForm
+              package={editingPackage}
+              onSuccess={() => {
+                setShowPackageForm(false);
+                setEditingPackage(null);
+                fetchAdminData();
+              }}
+              onCancel={() => {
+                setShowPackageForm(false);
+                setEditingPackage(null);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
