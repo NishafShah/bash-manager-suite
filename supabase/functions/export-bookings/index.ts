@@ -13,43 +13,53 @@ serve(async (req) => {
   }
 
   try {
-    // Verify admin authentication
-    const authHeader = req.headers.get('Authorization')!;
-    const supabaseClient = createClient(
+    // Verify admin authentication with JWT from request and check admin role via RLS
+    const authHeader = req.headers.get('Authorization') || '';
+    const supabaseRls = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user } } = await supabaseClient.auth.getUser(authHeader.replace('Bearer ', ''));
-    if (!user) {
-      throw new Error('Unauthorized');
-    }
+    const { data: { user } } = await supabaseRls.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
 
-    // Check if user has admin role
-    const { data: userRole } = await supabaseClient
+    const { data: userRole, error: roleErr } = await supabaseRls
       .from('user_roles')
       .select('role')
       .eq('user_id', user.id)
       .eq('role', 'admin')
-      .single();
+      .maybeSingle();
 
-    if (!userRole) {
-      throw new Error('Admin access required');
-    }
+    if (roleErr) throw roleErr;
+    if (!userRole) throw new Error('Admin access required');
 
-    // Fetch all bookings with related data
-    const { data: bookings, error } = await supabaseClient
+    // Use service role client for unrestricted data aggregation after verifying admin
+    const supabaseSr = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Fetch bookings and related data without relying on PostgREST FK joins
+    const { data: bookings, error: bookingsErr } = await supabaseSr
       .from('bookings')
-      .select(`
-        *,
-        service_packages(title, price),
-        profiles(first_name, last_name, phone)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
+    if (bookingsErr) throw bookingsErr;
 
-    if (error) {
-      throw error;
-    }
+    // Fetch related packages
+    const packageIds = Array.from(new Set((bookings ?? []).map(b => b.package_id).filter(Boolean)));
+    const { data: packages } = packageIds.length
+      ? await supabaseSr.from('service_packages').select('id,title,price').in('id', packageIds)
+      : { data: [], error: null } as any;
+    const packageMap = new Map((packages ?? []).map(p => [p.id, p]));
+
+    // Fetch related profiles
+    const userIds = Array.from(new Set((bookings ?? []).map(b => b.user_id).filter(Boolean)));
+    const { data: profiles } = userIds.length
+      ? await supabaseSr.from('profiles').select('id,first_name,last_name,phone').in('id', userIds)
+      : { data: [], error: null } as any;
+    const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
 
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook();
@@ -81,18 +91,20 @@ serve(async (req) => {
 
     // Add booking data
     bookings?.forEach((booking) => {
+      const prof = profileMap.get(booking.user_id) ?? ({} as any);
+      const pkg = packageMap.get(booking.package_id) ?? ({} as any);
       worksheet.addRow([
         booking.id,
-        `${booking.profiles?.first_name || ''} ${booking.profiles?.last_name || ''}`.trim() || 'Guest',
-        user.email || '',
-        booking.profiles?.phone || '',
-        booking.service_packages?.title || 'Custom Package',
+        `${(prof.first_name ?? '')} ${(prof.last_name ?? '')}`.trim() || 'Guest',
+        '',
+        prof.phone ?? '',
+        pkg.title ?? 'Custom Package',
         new Date(booking.booking_date).toLocaleDateString(),
         new Date(booking.event_date).toLocaleDateString(),
-        booking.guest_count || '',
-        Number(booking.total_amount || 0),
+        booking.guest_count ?? '',
+        Number(booking.total_amount ?? 0),
         booking.status,
-        booking.special_requests || ''
+        booking.special_requests ?? ''
       ]);
     });
 
