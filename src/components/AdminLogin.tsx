@@ -5,26 +5,61 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Settings, Lock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface AdminLoginProps {
   onAdminLogin: () => void;
 }
 
 export const AdminLogin = ({ onAdminLogin }: AdminLoginProps) => {
-  const [credentials, setCredentials] = useState({ username: "", password: "" });
+  const [credentials, setCredentials] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    // Hardcoded admin credentials
-    if (credentials.username === "admin" && credentials.password === "admin") {
-      onAdminLogin();
-    } else {
-      setError("Invalid username or password");
+    try {
+      // Sign in with Supabase
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
+      });
+
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        // Check if user has admin role
+        const { data: userRole, error: roleError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .eq('role', 'admin')
+          .single();
+
+        if (roleError || !userRole) {
+          setError("Admin access required. Please contact support.");
+          await supabase.auth.signOut();
+          setLoading(false);
+          return;
+        }
+
+        toast({
+          title: "Login Successful",
+          description: "Welcome to the admin panel",
+        });
+        onAdminLogin();
+      }
+    } catch (error: any) {
+      setError(error.message || "Login failed");
     }
     
     setLoading(false);
@@ -45,14 +80,14 @@ export const AdminLogin = ({ onAdminLogin }: AdminLoginProps) => {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <div className="relative">
                 <Input
-                  id="username"
-                  type="text"
-                  placeholder="Enter username"
-                  value={credentials.username}
-                  onChange={(e) => setCredentials(prev => ({ ...prev, username: e.target.value }))}
+                  id="email"
+                  type="email"
+                  placeholder="Enter admin email"
+                  value={credentials.email}
+                  onChange={(e) => setCredentials(prev => ({ ...prev, email: e.target.value }))}
                   required
                 />
               </div>
@@ -90,9 +125,8 @@ export const AdminLogin = ({ onAdminLogin }: AdminLoginProps) => {
           </form>
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Demo Credentials:</p>
-            <p>Username: <code className="bg-muted px-1 rounded">admin</code></p>
-            <p>Password: <code className="bg-muted px-1 rounded">admin</code></p>
+            <p>Login with your admin account credentials.</p>
+            <p>Contact support if you need admin access.</p>
           </div>
         </CardContent>
       </Card>
